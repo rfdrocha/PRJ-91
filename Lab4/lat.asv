@@ -47,10 +47,9 @@ opts = odeset('RelTol',1e-2,'AbsTol',1e-4);
 
 [t,X] = ode45(@(t,X)odefun(t,X,U,A_lat,B_lat),tspan,x0,opts);
 
-
 v = X(:,1);
 p = X(:,2);
-phi = X(:,3) + phi_0;
+phi = X(:,3);
 r = X(:,4);
 
 % Graficos
@@ -63,103 +62,27 @@ ylabel('v (kts)');
 hold off
 
 figure(2)
-plot(t,p*180/pi)
+plot(t,w*1.94384)
 hold on
 grid on
 xlabel('t (s)');
-ylabel('p (deg/s)');
+ylabel('w (kts)');
 hold off
 
 figure(3)
-plot(t,phi*180/pi)
+plot(t,q*180/pi)
 hold on
 grid on
 xlabel('t (s)');
-ylabel('phi (deg)');
+ylabel('q (deg/s)');
 hold off
 
 figure(4)
-plot(t,r*180/pi)
+plot(t,theta*180/pi)
 hold on
 grid on
 xlabel('t (s)');
-ylabel('r (deg/s)');
-hold off
-
-%% Item B
-[autovec,autoval] = eig(A_lat);
-disp("Autovalores:")
-autoval = diag(autoval)
-
-%% Item C
-omega_n = abs(autoval(2))
-omega_d = imag(autoval(2))
-zeta = -real(autoval(2))/omega_n
-t_A_metade = -log(0.5)/(zeta*omega_n)
-
-V = u0^2 + v.^2 + w0^2;
-beta = asin(v./V);
-
-% Grafico de beta em funcao do tempo
-figure(5)
-plot(t,beta*180/pi)
-hold on
-grid on
-xlabel('t (s)')
-ylabel('beta (deg)')
-hold off
- 
-% Grafico de phi por tempo
-figure(6)
-plot(t,phi*180/pi)
-hold on
-grid on
-xlabel('t (s)')
-ylabel('phi (deg)')
-hold off
-
-% Grafico de beta x phi
-figure(7)
-plot(beta*180/pi,phi*180/pi)
-hold on
-grid on
-xlabel('beta (deg)')
-ylabel('phi (deg)')
-hold off
-
-%% Item D
-% verificar requisitos do FAR29
-
-%% Item E
-% deduzir coeficientes A,B,C,D,E
-
-%% Item F
-
-clear Lv_prime Nv_prime   % liberando as variaveis para que sejam simbolos
-syms Lv Nv
-
-A_lat_sym = [Yv, Yp + w0, g*cos(phi_0)*cos(phi_0), Yr - u0;
-        Lv, Lp_prime, 0, Lr_prime;
-        0, 1, 0, cos(phi_0)*tan(theta_0);
-        Nv, Np_prime, 0, Nr_prime];
-
-coefs = charpoly(A_lat_sym);
-A = coefs(1);
-B = coefs(2);
-C = coefs(3);
-D = coefs(4);
-E = coefs(5);
-
-RD4 = B*C*D - A*D*D - B*B*E;
-% symvar(RD4); % usado para confirmar a ordem das variaveis na fimplicit 
-
-figure(8)
-fimplicit(RD4,[-5 5 -5 5])
-
-hold on
-grid on
-xlabel('Lv')
-ylabel('Mv')
+ylabel('theta (deg)');
 hold off
 
 %%
