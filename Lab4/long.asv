@@ -96,7 +96,73 @@ t_2A = -log(2)/(zeta*omega_n)
 % mostrar conta para obter os coeficientes para um helicoptero qualquer
 
 %% Item f
-A_long_sym = []
+clear Mu Mw   % liberando as variaveis para que sejam simbolos
+syms Mu Mw
+A_long_sym = [Xu, Xw, Xq-w0, -g*cos(theta_0);
+          Zu, Zw, Zq+u0, -g*cos(phi_0)*sin(theta_0);
+          Mu, Mw, Mq, 0;
+          0, 0, cos(phi_0), 0];
+
+coefs = charpoly(A_long_sym);
+A = coefs(1);
+B = coefs(2);
+C = coefs(3);
+D = coefs(4);
+E = coefs(5);
+
+RD4 = B*C*D - A*D*D - B*B*E;
+% symvar(RD4); % usado para confirmar a ordem das variaveis na fimplicit 
+% Converte para funções numéricas
+fA   = matlabFunction(A, 'Vars', [Mu, Mw]);
+fB   = matlabFunction(B, 'Vars', [Mu, Mw]);
+fC   = matlabFunction(C, 'Vars', [Mu, Mw]);
+fD   = matlabFunction(D, 'Vars', [Mu, Mw]);
+fE   = matlabFunction(E, 'Vars', [Mu, Mw]);
+fRD4 = matlabFunction(RD4, 'Vars', [Mu, Mw]);
+
+% Geração de malha
+[mu_vals, mw_vals] = meshgrid(linspace(-0.5, 2, 400), linspace(-1, 2, 400));
+
+% Avaliação dos coeficientes
+A_vals   = fA(mu_vals, mw_vals);
+B_vals   = fB(mu_vals, mw_vals);
+C_vals   = fC(mu_vals, mw_vals);
+D_vals   = fD(mu_vals, mw_vals);
+E_vals   = fE(mu_vals, mw_vals);
+RD4_vals = fRD4(mu_vals, mw_vals);
+
+% Máscara: alguma função < 0
+mask = (A_vals < 0) | (B_vals < 0) | (C_vals < 0) | ...
+       (D_vals < 0) | (E_vals < 0) | (RD4_vals < 0);
+
+% Plot
+figure(5); clf;
+hold on;
+
+% Região onde algum coeficiente é negativo
+contourf(mu_vals, mw_vals, mask, [1 1], 'FaceColor', [1 0.8 0.8], 'LineStyle', 'none');
+
+x_lim_lower = -0.25;
+x_lim_upper = 0.5;
+y_lim_lower = -0.15;
+y_lim_upper = 0.15;
+
+% Fronteiras fimplicit de E e RD4
+fimplicit(C, [x_lim_lower x_lim_upper y_lim_lower y_lim_upper], 'b', 'LineWidth', 1.5);
+fimplicit(D, [x_lim_lower x_lim_upper y_lim_lower y_lim_upper], 'black', 'LineWidth', 1.5);
+fimplicit(E, [x_lim_lower x_lim_upper y_lim_lower y_lim_upper], 'cyan', 'LineWidth', 1.5);
+fimplicit(RD4, [x_lim_lower x_lim_upper -1 2], 'r', 'LineWidth', 1.5);
+
+% Ponto marcado
+plot(0.0586, 0.0423, 'ko', 'MarkerFaceColor', 'k');
+
+xlabel('\mu_u');
+ylabel('\mu_w');
+grid on;
+title('Regiões onde algum coeficiente é negativo');
+legend({'','C = 0','D = 0','E = 0', 'RD4 = 0', 'Ponto de interesse'});
+axis equal;
+hold off;
 
 %%
 

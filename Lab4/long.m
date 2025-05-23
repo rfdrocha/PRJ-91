@@ -112,15 +112,55 @@ E = coefs(5);
 
 RD4 = B*C*D - A*D*D - B*B*E;
 % symvar(RD4); % usado para confirmar a ordem das variaveis na fimplicit 
+% Converte para funções numéricas
+fA   = matlabFunction(A, 'Vars', [Mu, Mw]);
+fB   = matlabFunction(B, 'Vars', [Mu, Mw]);
+fC   = matlabFunction(C, 'Vars', [Mu, Mw]);
+fD   = matlabFunction(D, 'Vars', [Mu, Mw]);
+fE   = matlabFunction(E, 'Vars', [Mu, Mw]);
+fRD4 = matlabFunction(RD4, 'Vars', [Mu, Mw]);
 
-figure(5)
-fimplicit(RD4,[-0.5 2 -1 2])
+% Geração de malha
+x_lim_lower = -0.25;
+x_lim_upper = 0.5;
+y_lim_lower = -0.6;
+y_lim_upper = 0.15;
+[mu_vals, mw_vals] = meshgrid(linspace(x_lim_lower, x_lim_upper, 400), linspace(y_lim_lower, y_lim_upper, 400));
 
-hold on
-grid on
-xlabel('Mu')
-ylabel('Mw')
-hold off
+% Avaliação dos coeficientes
+A_vals   = fA(mu_vals, mw_vals);
+B_vals   = fB(mu_vals, mw_vals);
+C_vals   = fC(mu_vals, mw_vals);
+D_vals   = fD(mu_vals, mw_vals);
+E_vals   = fE(mu_vals, mw_vals);
+RD4_vals = fRD4(mu_vals, mw_vals);
+
+% Máscara: alguma função < 0
+mask = (A_vals < 0) | (B_vals < 0) | (C_vals < 0) | ...
+       (D_vals < 0) | (E_vals < 0) | (RD4_vals < 0);
+
+% Plot
+figure(5); clf;
+hold on;
+
+% Região onde algum coeficiente é negativo
+contourf(mu_vals, mw_vals, mask, [1 1], 'FaceColor', [0.85 0.85 0.85], 'LineStyle', 'none');
+
+% Fronteiras fimplicit de E e RD4
+fimplicit(C, [x_lim_lower x_lim_upper y_lim_lower y_lim_upper], 'b', 'LineWidth', 1.5);
+fimplicit(D, [x_lim_lower x_lim_upper y_lim_lower y_lim_upper], 'black', 'LineWidth', 1.5);
+fimplicit(E, [x_lim_lower x_lim_upper y_lim_lower y_lim_upper], 'cyan', 'LineWidth', 1.5);
+fimplicit(RD4, [x_lim_lower x_lim_upper y_lim_lower y_lim_upper], 'r', 'LineWidth', 1.5);
+
+% Ponto marcado
+plot(0.0586, 0.0423, 'ko', 'MarkerFaceColor', 'k');
+
+xlabel('M_u');
+ylabel('M_w');
+grid on;
+legend({'','C = 0','D = 0','E = 0', 'RD4 = 0', 'BO-105C'});
+axis equal;
+hold off;
 
 %%
 

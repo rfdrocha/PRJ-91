@@ -47,9 +47,10 @@ opts = odeset('RelTol',1e-2,'AbsTol',1e-4);
 
 [t,X] = ode45(@(t,X)odefun(t,X,U,A_lat,B_lat),tspan,x0,opts);
 
+
 v = X(:,1);
 p = X(:,2);
-phi = X(:,3);
+phi = X(:,3) + phi_0;
 r = X(:,4);
 
 % Graficos
@@ -62,29 +63,158 @@ ylabel('v (kts)');
 hold off
 
 figure(2)
-plot(t,w*1.94384)
+plot(t,p*180/pi)
 hold on
 grid on
 xlabel('t (s)');
-ylabel('w (kts)');
+ylabel('p (deg/s)');
 hold off
 
 figure(3)
-plot(t,q*180/pi)
+plot(t,phi*180/pi)
 hold on
 grid on
 xlabel('t (s)');
-ylabel('q (deg/s)');
+ylabel('phi (deg)');
 hold off
 
 figure(4)
-plot(t,theta*180/pi)
+plot(t,r*180/pi)
 hold on
 grid on
 xlabel('t (s)');
-ylabel('theta (deg)');
+ylabel('r (deg/s)');
 hold off
 
+%% Item B
+[autovec,autoval] = eig(A_lat);
+disp("Autovalores:")
+autoval = diag(autoval)
+
+%% Item C
+omega_n = abs(autoval(2))
+omega_d = imag(autoval(2))
+zeta = -real(autoval(2))/omega_n
+t_A_metade = -log(0.5)/(zeta*omega_n)
+
+V = u0^2 + v.^2 + w0^2;
+beta = asin(v./V);
+
+% Grafico de beta em funcao do tempo
+figure(5)
+plot(t,beta*180/pi)
+hold on
+grid on
+xlabel('t (s)')
+ylabel('beta (deg)')
+hold off
+ 
+% Grafico de phi por tempo
+figure(6)
+plot(t,phi*180/pi)
+hold on
+grid on
+xlabel('t (s)')
+ylabel('phi (deg)')
+hold off
+
+% Grafico de beta x phi
+figure(7)
+plot(beta*180/pi,phi*180/pi)
+hold on
+grid on
+xlabel('beta (deg)')
+ylabel('phi (deg)')
+hold off
+
+%% Item D
+% verificar requisitos do FAR29
+
+%% Item E
+% deduzir coeficientes A,B,C,D,E
+
+%% Item F
+
+clear Lv_prime Nv_prime   % liberando as variaveis para que sejam simbolos
+syms Lv Nv
+
+A_lat_sym = [Yv, Yp + w0, g*cos(phi_0)*cos(phi_0), Yr - u0;
+        Lv, Lp_prime, 0, Lr_prime;
+        0, 1, 0, cos(phi_0)*tan(theta_0);
+        Nv, Np_prime, 0, Nr_prime];
+
+coefs = charpoly(A_lat_sym);
+A = coefs(1);
+B = coefs(2);
+C = coefs(3);
+D = coefs(4);
+E = coefs(5);
+
+RD4 = B*C*D - A*D*D - B*B*E;
+% symvar(RD4); % usado para confirmar a ordem das variaveis na fimplicit 
+% Converte para funções numéricas
+fA   = matlabFunction(A, 'Vars', [Lv, Nv]);
+fB   = matlabFunction(B, 'Vars', [Mu, Mw]);
+fC   = matlabFunction(C, 'Vars', [Mu, Mw]);
+fD   = matlabFunction(D, 'Vars', [Mu, Mw]);
+fE   = matlabFunction(E, 'Vars', [Mu, Mw]);
+fRD4 = matlabFunction(RD4, 'Vars', [Mu, Mw]);
+
+% Geração de malha
+x_lim_lower = -0.25;
+x_lim_upper = 0.5;
+y_lim_lower = -0.6;
+y_lim_upper = 0.15;
+[mu_vals, mw_vals] = meshgrid(linspace(x_lim_lower, x_lim_upper, 400), linspace(y_lim_lower, y_lim_upper, 400));
+
+% Avaliação dos coeficientes
+A_vals   = fA(mu_vals, mw_vals);
+B_vals   = fB(mu_vals, mw_vals);
+C_vals   = fC(mu_vals, mw_vals);
+D_vals   = fD(mu_vals, mw_vals);
+E_vals   = fE(mu_vals, mw_vals);
+RD4_vals = fRD4(mu_vals, mw_vals);
+
+% Máscara: alguma função < 0
+mask = (A_vals < 0) | (B_vals < 0) | (C_vals < 0) | ...
+       (D_vals < 0) | (E_vals < 0) | (RD4_vals < 0);
+
+% Plot
+figure(5); clf;
+hold on;
+
+% Região onde algum coeficiente é negativo
+contourf(mu_vals, mw_vals, mask, [1 1], 'FaceColor', [1 0.8 0.8], 'LineStyle', 'none');
+
+% Fronteiras fimplicit de E e RD4
+fimplicit(C, [x_lim_lower x_lim_upper y_lim_lower y_lim_upper], 'b', 'LineWidth', 1.5);
+fimplicit(D, [x_lim_lower x_lim_upper y_lim_lower y_lim_upper], 'black', 'LineWidth', 1.5);
+fimplicit(E, [x_lim_lower x_lim_upper y_lim_lower y_lim_upper], 'cyan', 'LineWidth', 1.5);
+fimplicit(RD4, [x_lim_lower x_lim_upper y_lim_lower y_lim_upper], 'r', 'LineWidth', 1.5);
+
+% Ponto marcado
+plot(0.0586, 0.0423, 'ko', 'MarkerFaceColor', 'k');
+
+xlabel('\mu_u');
+ylabel('\mu_w');
+grid on;
+title('Mapa de estabilidade longitudinal');
+legend({'','C = 0','D = 0','E = 0', 'RD4 = 0', 'Ponto de interesse'});
+axis equal;
+hold off;
+
+%{
+figure(8)
+fimplicit(RD4,[-5 5 -5 5])
+
+hold on
+fimplicit(E,[-5 5 -5 5])
+plot(-0.2259,0.0825,'o')
+grid on
+xlabel('Lv')
+ylabel('Nv')
+hold off
+%}
 %%
 
 % funcao auxiliar para calculo da derivada do vetor X
